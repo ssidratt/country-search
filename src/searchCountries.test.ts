@@ -80,3 +80,107 @@ describe("searchCountries", () => {
     );
   });
 });
+
+describe("country search errors", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("throws HttpError for HTTP 500", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 500,
+      }),
+    );
+
+    await expect(searchCountries("Japan")).rejects.toMatchObject({
+      name: "HttpError",
+      status: 500,
+    });
+  });
+
+  it("returns no results for HTTP 404", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: false,
+        status: 404,
+      }),
+    );
+
+    await expect(searchCountries("Unknown")).resolves.toEqual([]);
+  });
+
+  it("propagates AbortError", async () => {
+    const controller = new AbortController();
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation(
+        (_url: string, options: RequestInit) =>
+          new Promise((_resolve, reject) => {
+            options.signal?.addEventListener("abort", () => {
+              reject(options.signal?.reason);
+            });
+          }),
+      ),
+    );
+
+    const request = searchCountries("Japan", controller.signal);
+
+    controller.abort();
+
+    await expect(request).rejects.toMatchObject({
+      name: "AbortError",
+    });
+  });
+
+  it("propagates TimeoutError", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockRejectedValue(
+          new DOMException("Request timed out", "TimeoutError"),
+        ),
+    );
+
+    await expect(searchCountries("Japan")).rejects.toMatchObject({
+      name: "TimeoutError",
+    });
+  });
+});
+
+describe("automatic request timeout", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.useRealTimers();
+  });
+
+  it("aborts a request when the timeout expires", async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn(
+      (_url: string, options: RequestInit) =>
+        new Promise<never>((_resolve, reject) => {
+          options.signal?.addEventListener("abort", () => {
+            reject(options.signal?.reason);
+          });
+        }),
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const request = searchCountries("Japan");
+
+    const expectation = expect(request).rejects.toMatchObject({
+      name: "TimeoutError",
+    });
+
+    await vi.advanceTimersByTimeAsync(10000);
+
+    await expectation;
+  });
+});
