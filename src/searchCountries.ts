@@ -1,4 +1,5 @@
 const API_URL = "https://countries.dev/name/";
+const REQUEST_TIMEOUT = 10000;
 
 export class HttpError extends Error {
   constructor(public readonly status: number) {
@@ -13,15 +14,31 @@ export async function searchCountries(
 ): Promise<unknown> {
   const url = `${API_URL}${encodeURIComponent(query)}`;
 
-  const response = await fetch(url, { signal });
+  const controller = new AbortController();
 
-  if (response.status === 404) {
-    return [];
+  const timeoutId = setTimeout(() => {
+    controller.abort(new DOMException("Request timed out", "TimeoutError"));
+  }, REQUEST_TIMEOUT);
+
+  const combinedSignal = signal
+    ? AbortSignal.any([signal, controller.signal])
+    : controller.signal;
+
+  try {
+    const response = await fetch(url, {
+      signal: combinedSignal,
+    });
+
+    if (response.status === 404) {
+      return [];
+    }
+
+    if (!response.ok) {
+      throw new HttpError(response.status);
+    }
+
+    return await response.json();
+  } finally {
+    clearTimeout(timeoutId);
   }
-
-  if (!response.ok) {
-    throw new HttpError(response.status);
-  }
-
-  return response.json();
 }
