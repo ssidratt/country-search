@@ -1,11 +1,14 @@
+
 {
   "name": "country-search",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Country Search application",
+  "private": true,
   "scripts": {
-    "test": "vitest run --passWithNoTests",
-    "build": "tsc",
+    "dev": "vite",
+    "test": "vitest run --passWithNoTests --exclude dist/**",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
     "prepare": "husky"
@@ -25,6 +28,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^26.6.6",
+    "@types/three": "^0.187.0",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
@@ -32,6 +36,7 @@
     "prettier": "^3.10.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.72.2",
+    "vite": "^8.3.8",
     "vitest": "^4.1.12"
   },
   "lint-staged": {
@@ -39,5 +44,8 @@
       "eslint --fix",
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "three": "^0.187.0"
   }
 }
